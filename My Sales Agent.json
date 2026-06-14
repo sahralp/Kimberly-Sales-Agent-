@@ -77,7 +77,7 @@
           "parameters": [
             {
               "name": "xi-api-key",
-              "value": "sk_fcd4ca80e9a36b5b0c5673ecd2b4ffac47dfa451959aed42"
+              "value": "elevenlabs-api-key"
             }
           ]
         },
@@ -637,7 +637,7 @@
           "parameters": [
             {
               "name": "xi-api-key",
-              "value": "sk_fcd4ca80e9a36b5b0c5673ecd2b4ffac47dfa451959aed42"
+              "value": "elevenlabs-api-key"
             }
           ]
         },
