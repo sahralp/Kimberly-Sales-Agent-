@@ -1,0 +1,1225 @@
+{
+  "name": "My Sales Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "messages"
+        ],
+        "options": {}
+      },
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -2800
+      ],
+      "id": "d55b28e4-c721-4e69-a41d-e7d87fbf6de6",
+      "name": "WhatsApp Trigger",
+      "webhookId": "fe8d22c2-cf25-4a39-878f-10805c8c220c",
+      "credentials": {
+        "whatsAppTriggerApi": {
+          "id": "fCl6tYDgNHlLv5k2",
+          "name": "WhatsApp OAuth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "whatsAppApi",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        672,
+        -2880
+      ],
+      "id": "64a5d993-71e1-48c7-96f8-af4f1ea7ba1b",
+      "name": "HTTP Request",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "RxItEnceCBhYmJYl",
+          "name": "WhatsApp account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "media",
+        "operation": "mediaUrlGet",
+        "mediaGetId": "={{ $json.messages[0].audio.id }}"
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        448,
+        -2880
+      ],
+      "id": "783f0e44-90c0-4477-a6d0-1d58c141a01d",
+      "name": "Download media",
+      "webhookId": "e84d3a2e-a7c3-484d-ac1d-174078bec459",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "RxItEnceCBhYmJYl",
+          "name": "WhatsApp account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.elevenlabs.io/v1/speech-to-text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "xi-api-key",
+              "value": "sk_fcd4ca80e9a36b5b0c5673ecd2b4ffac47dfa451959aed42"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            },
+            {
+              "name": "model_id",
+              "value": "scribe_v2"
+            },
+            {
+              "name": "diarize",
+              "value": "true"
+            },
+            {
+              "name": "tag_audio_events",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        896,
+        -2880
+      ],
+      "id": "1d045ef8-4ec0-405c-8821-f66394476a53",
+      "name": "ElevenLabs Speech to Text"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.messages[0].text.body }}{{ $json.text }}",
+        "needsFallback": true,
+        "options": {
+          "systemMessage": "=<system_prompt>\n\nYOU ARE KIMBERLY AN ELITE AI SALES AGENT FOR \"BEAUTY DIVA\", A PREMIUM BEAUTY BRAND.\n\nYOU ARE RESPONSIBLE FOR:\n- HANDLING CUSTOMER INTERACTIONS\n- RECOMMENDING PRODUCTS\n- CALCULATING TOTAL COSTS\n- PROCESSING PAYMENTS\n- VERIFYING PAYMENTS\n- REGISTERING ORDERS ONLY AFTER SUCCESSFUL PAYMENT\n\nYOU MUST OPERATE STRICTLY USING PROVIDED TOOLS.\n\n---\n\n# 🧠 CORE RULES (NON-NEGOTIABLE)\n\n1. YOU MUST USE DATABASE TOOL:\n   - FETCH PRODUCTS\n   - FETCH PRICES\n   - NEVER GUESS\n\n2. YOU MUST USE LOCATION TOOL:\n   - ONLY IF CUSTOMER REQUESTS DELIVERY\n   - FETCH DELIVERY (WAYBILL) COST\n\n3. YOU MUST USE CALCULATOR TOOL:\n   - FOR ALL CALCULATIONS\n   - PRODUCT TOTAL\n   - DELIVERY TOTAL\n   - GRAND TOTAL\n\n🚨 NEVER CALCULATE MANUALLY\n\n4. YOU MUST USE MAKE PAYMENT TOOL:\n   - GENERATE PAYMENT LINK\n   - REQUIRE:\n     - CUSTOMER EMAIL\n     - TOTAL AMOUNT(CONVERT ANY PRICE THAT YOU GET TO KOBO WHILE SENDING IT TO THE PAYMENT TOOL, THE PAYMENT TOOL REQUIRES THE INPUT TO BE IN KOBO)\n     - THE CURRENCY MUST BE IN NAIRA\n\n5. YOU MUST USE VERIFY PAYMENT TOOL:\n   - CONFIRM PAYMENT STATUS\n   - EXTRACT PAYMENT REFERENCE\n\n6. YOU MUST USE REGISTER CLIENT TOOL:\n   ONLY AFTER SUCCESSFUL PAYMENT\n\n---\n\n# 🪜 EXECUTION FLOW (STRICT)\n\n## STEP 1: UNDERSTAND REQUEST\n- IDENTIFY PRODUCTS\n- IDENTIFY QUANTITY\n- ASK IF DELIVERY OR PICKUP\n\n---\n\n## STEP 2: FETCH PRODUCT DATA\n→ CALL DATABASE TOOL\n\n---\n\n## STEP 3: HANDLE DELIVERY (IF NEEDED)\nIF DELIVERY:\n→ ASK FOR ADDRESS\n→ CALL LOCATION TOOL\n→ GET DELIVERY COST\n\nIF PICKUP:\n→ SET DELIVERY = NO\n\n---\n\n## STEP 4: CALCULATE TOTAL\n\n→ CALL CALCULATOR TOOL:\n- PRODUCT TOTAL\n- + DELIVERY COST (IF ANY)\n\nSTORE:\n- product_total\n- delivery_amount\n- grand_total\n\n---\n\n## STEP 5: COLLECT CUSTOMER DETAILS\n\nYOU MUST HAVE:\n- CUSTOMER NAME\n- CUSTOMER EMAIL\n\nIF DELIVERY:\n- CUSTOMER ADDRESS\n\n---\n\n## STEP 6: INITIATE PAYMENT\n\n→ CALL MAKE PAYMENT TOOL:\n- EMAIL\n- AMOUNT = grand_total\n\n---\n\n## STEP 7: PAYMENT VERIFICATION LOOP\n\nIF USER SAYS \"I HAVE PAID\":\n\n→ CALL VERIFY PAYMENT TOOL\n\n---\n\n## 🔁 ERROR HANDLING (CRITICAL)\n\n### CASE 1: PAYMENT NOT FOUND\nRESPONSE:\n\"I couldn’t confirm your payment yet. Please ensure payment is completed or try again in a moment.\"\n\n---\n\n### CASE 2: PAYMENT FAILED\nRESPONSE:\n\"It seems the payment did not go through. Would you like me to generate a new payment link?\"\n\n→ OFFER RETRY\n\n---\n\n### CASE 3: AMOUNT MISMATCH\nIF VERIFIED AMOUNT ≠ grand_total:\n\nRESPONSE:\n\"The payment received does not match the expected amount. Please contact support or retry payment.\"\n\n🚨 DO NOT REGISTER CLIENT\n\n---\n\n### CASE 4: TOOL FAILURE\nIF ANY TOOL FAILS:\n\nRESPONSE:\n\"I’m having trouble processing that right now. Please give me a moment or try again.\"\n\n---\n\n## STEP 8: SUCCESSFUL PAYMENT\n\nIF:\n- STATUS = SUCCESS\n- AMOUNT = grand_total\n\nTHEN:\n\nCONFIRM:\n\"Payment confirmed successfully ✅\"\n\n---\n\n## STEP 9: REGISTER CLIENT (ONLY NOW)\n\n→ CALL REGISTER CLIENT TOOL WITH:\n\n- name\n- email\n- products_ordered\n- product_total\n- delivery (YES / NO)\n- delivery_address (IF YES)\n- delivery_amount\n- total_amount (product + delivery)\n- payment_reference\n- payment_status = \"PAID\"\n\n---\n\n## STEP 10: FINAL RESPONSE\n\n\"Thank you, your order has been successfully placed 🎉\n\nHere are your order details:\n- Products: ...\n- Delivery: Yes/No\n- Total Paid: ...\n- Payment Reference: ...\n\nWe’ll begin processing your order shortly.\"\n\n---\n\n# 💬 COMMUNICATION STYLE\n\n- FRIENDLY\n- CONFIDENT\n- PREMIUM BRAND TONE\n- CLEAR AND GUIDED\n\n---\n\n# 🚨 WHAT NOT TO DO\n\n- NEVER REGISTER CLIENT BEFORE PAYMENT ❌\n- NEVER SKIP PAYMENT VERIFICATION ❌\n- NEVER CALCULATE MANUALLY ❌\n- NEVER GUESS PRODUCT PRICE ❌\n- NEVER GUESS DELIVERY COST ❌\n- NEVER ACCEPT PARTIAL PAYMENT ❌\n- NEVER STORE INCOMPLETE DATA ❌\n\n---\n\n# 🧪 FEW-SHOT EXAMPLE\n\nUSER:\n\"I want 2 body creams delivered\"\n\nAGENT:\n→ DATABASE TOOL\n→ LOCATION TOOL\n→ CALCULATOR TOOL\n\n\"Your total comes to $XX. Please provide your email to proceed with payment.\"\n\n---\n\nUSER:\n\"I’ve paid\"\n\nAGENT:\n→ VERIFY PAYMENT TOOL\n\nIF SUCCESS:\n→ REGISTER CLIENT TOOL\n\n\"Payment confirmed ✅ Your order has been placed.\"\n\n---\n\n# 🏁 FINAL DIRECTIVE\n\nYOU ARE A COMPLETE SALES SYSTEM.\n\nYOU MUST:\n- FOLLOW PROCESS\n- USE TOOLS\n- HANDLE ERRORS\n- ENSURE ACCURACY\n- COMPLETE THE SALE\n- ALWAYS CHECK THE MEMORY TO KNOW WHAT THE CUSTOMER IS TALKING ABOUT\n- REGISTER PRODUCTS BY THEIR EXACT NAME AND THE QUAUNTITY NEEDED IF THERE ARE MORE THAT ONE PRODUCT, SEPERATE THEM WITH A COMMA(,) AND IF THE CLIENT NEEDS PRODUCTS TO BE DELIVERED TO MORE THAN ONE LOCATION, THEN WHILE RECORDING THE LOCATION, INCLUDE THE NAME OF THE PRODUCT BEING SENT THERE IN A BRACKET.\n- EVERY PRICE IS IN NAIRA SO YOU MUST ALWAS \n\n</system_prompt>"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1568,
+        -2800
+      ],
+      "id": "dd0d564c-df22-4ec1-bfdd-9407bed075fe",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.messages[0].type }}",
+                    "rightValue": "audio",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "d36feba5-55d0-4f54-bc3f-cfe59591db32"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "c2ec62b5-2049-4080-8dd4-71a0c8f21ec9",
+                    "leftValue": "={{ $json.messages[0].type }}",
+                    "rightValue": "text",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        -2800
+      ],
+      "id": "f73e5f90-5948-4568-b77f-5f662a8ecf66",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1nBOAPlCCdnrboE7yKoG4K77rf6H1E6GyP7z1BIqw0o4",
+          "mode": "list",
+          "cachedResultName": "Cosmetcs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1nBOAPlCCdnrboE7yKoG4K77rf6H1E6GyP7z1BIqw0o4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1213314658,
+          "mode": "list",
+          "cachedResultName": "Delivery locatiion",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1nBOAPlCCdnrboE7yKoG4K77rf6H1E6GyP7z1BIqw0o4/edit#gid=1213314658"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        1504,
+        -2576
+      ],
+      "id": "69290348-9abb-406f-a804-802576c263f3",
+      "name": "Delivery location",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "KxTqHtxLpjqV5K2Q",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "kg8uQqsU3Cs8Fgay"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "amount": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('amount', ``, 'number') }}",
+            "email": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('email', ``, 'string') }}",
+            "currency": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('currency', ``, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "amount",
+              "displayName": "amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            },
+            {
+              "id": "currency",
+              "displayName": "currency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        1632,
+        -2576
+      ],
+      "id": "80362e05-a838-48bd-979b-5b55ba51cf7f",
+      "name": "Call 'Create Payment Link Tool'"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "OnAtn4fbntWQ7oPF",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/OnAtn4fbntWQ7oPF",
+          "cachedResultName": "My workflow 12"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "reference": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('reference', ``, 'string') }}"
+          },
+          "matchingColumns": [
+            "reference"
+          ],
+          "schema": [
+            {
+              "id": "reference",
+              "displayName": "reference",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        1760,
+        -2576
+      ],
+      "id": "339830a2-6b60-4ba1-a81c-5bef3eb238ba",
+      "name": "Call 'Verify Payment'"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1nBOAPlCCdnrboE7yKoG4K77rf6H1E6GyP7z1BIqw0o4",
+          "mode": "list",
+          "cachedResultName": "Cosmetcs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1nBOAPlCCdnrboE7yKoG4K77rf6H1E6GyP7z1BIqw0o4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 598457554,
+          "mode": "list",
+          "cachedResultName": "Orders sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1nBOAPlCCdnrboE7yKoG4K77rf6H1E6GyP7z1BIqw0o4/edit#gid=598457554"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Client Name": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Client_Name', ``, 'string') }}",
+            "Email": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Email', ``, 'string') }}",
+            "Product": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Product', ``, 'string') }}",
+            "Payment ref": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Payment_ref', ``, 'string') }}",
+            "Payment Staues": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Payment_Staues', ``, 'string') }}",
+            "Dispatch Delivery": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Dispatch_Delivery', ``, 'string') }}",
+            "Adress": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Adress', ``, 'string') }}",
+            "Delivery amount": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Delivery_amount', ``, 'string') }}",
+            "Total": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Total', ``, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Client Name",
+              "displayName": "Client Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Product",
+              "displayName": "Product",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Payment ref",
+              "displayName": "Payment ref",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Payment Staues",
+              "displayName": "Payment Staues",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Dispatch Delivery",
+              "displayName": "Dispatch Delivery",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Adress",
+              "displayName": "Adress",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Delivery amount",
+              "displayName": "Delivery amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Total",
+              "displayName": "Total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        1888,
+        -2576
+      ],
+      "id": "cf605369-62b7-4292-af02-b262e5a69f45",
+      "name": "Append row in sheet in Google Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "KxTqHtxLpjqV5K2Q",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.toolCalculator",
+      "typeVersion": 1,
+      "position": [
+        2016,
+        -2576
+      ],
+      "id": "b8dacbbb-74e4-4d20-a23c-4252abf63d4e",
+      "name": "Calculator"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('WhatsApp Trigger').first().json.contacts[0].wa_id }}",
+        "contextWindowLength": 1000
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        1376,
+        -2576
+      ],
+      "id": "3fd7c3ff-e430-49ac-b94a-3c93792f5c24",
+      "name": "Window Buffer Memory1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v17.0/{{ $('WhatsApp Trigger').first().json.metadata.phone_number_id }}/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "whatsAppApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={ \"messaging_product\": \"whatsapp\", \"recipient_type\": \"individual\", \"to\": \"{{ $('WhatsApp Trigger').first().json.contacts[0].wa_id }}\", \"type\": \"text\", \"text\": { \"body\": {{ JSON.stringify($json.output) }} } }",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2576,
+        -2896
+      ],
+      "id": "d18626eb-452c-4371-ac59-9a9ba0918df9",
+      "name": "Send WhatsApp Message (HTTP)",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "RxItEnceCBhYmJYl",
+          "name": "WhatsApp account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1248,
+        -2576
+      ],
+      "id": "a87c382c-6543-4f6c-a765-730c510ebc13",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "POmMymVCTbP8OvnF",
+          "name": "Google Gemini(PaLM) Api account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1nBOAPlCCdnrboE7yKoG4K77rf6H1E6GyP7z1BIqw0o4",
+          "mode": "list",
+          "cachedResultName": "Cosmetcs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1nBOAPlCCdnrboE7yKoG4K77rf6H1E6GyP7z1BIqw0o4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "My product",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1nBOAPlCCdnrboE7yKoG4K77rf6H1E6GyP7z1BIqw0o4/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        2144,
+        -2576
+      ],
+      "id": "36e6084a-f6c7-4570-828c-d90a745c0f53",
+      "name": "Product Database",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "KxTqHtxLpjqV5K2Q",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "e2804500-d787-4f79-8ffa-86eb417cc443",
+              "leftValue": "={{ $('WhatsApp Trigger').item.json.messages[0].type }}",
+              "rightValue": "audio",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2352,
+        -2800
+      ],
+      "id": "f23393cf-50a2-4754-a593-37a668ee0c89",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.elevenlabs.io/v1/text-to-speech/EXAVITQu4vr4xnSDxMaL/with-timestamps?output_format=mp3_44100_128",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "output_format",
+              "value": "mp3_44100_128"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "xi-api-key",
+              "value": "sk_fcd4ca80e9a36b5b0c5673ecd2b4ffac47dfa451959aed42"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "={{ $json.output }}"
+            },
+            {
+              "name": "model_id",
+              "value": "eleven_multilingual_v2"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2576,
+        -2704
+      ],
+      "id": "94d911ec-0cb3-4207-872e-ca6e5cf07423",
+      "name": "HTTP Request2"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\n\n// Log to see the actual structure\nconsole.log(JSON.stringify(Object.keys(item)));\n\n// Try different possible locations\nconst audioBase64 = item.audio_base64 || \n                    item[0]?.audio_base64 || \n                    item.data?.audio_base64;\n\nif (!audioBase64) {\n  throw new Error('Could not find audio_base64. Keys found: ' + JSON.stringify(Object.keys(item)));\n}\n\nreturn [{\n  json: {},\n  binary: {\n    data: await this.helpers.prepareBinaryData(\n      Buffer.from(audioBase64, 'base64'),\n      'audio.mp3',\n      'audio/mpeg'\n    )\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2800,
+        -2704
+      ],
+      "id": "84b52e01-d078-4162-9d31-b2d1c6de4bda",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v25.0/{{ $('WhatsApp Trigger').item.json.metadata.phone_number_id }}/media",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "whatsAppApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": []
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "messaging_product",
+              "value": "whatsapp"
+            },
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        3024,
+        -2704
+      ],
+      "id": "495caaf3-4e94-41af-b255-7a411596914f",
+      "name": "HTTP Request1",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "RxItEnceCBhYmJYl",
+          "name": "WhatsApp account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v25.0/{{ $('WhatsApp Trigger').item.json.metadata.phone_number_id }}/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "whatsAppApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": []
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $('WhatsApp Trigger').item.json.messages[0].from }}\",\n  \"type\": \"audio\",\n  \"audio\": {\n    \"id\": \"{{ $json.id }}\"\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        3248,
+        -2704
+      ],
+      "id": "87859d16-6a40-4d5f-a2df-113fb77ddac0",
+      "name": "HTTP Request3",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "RxItEnceCBhYmJYl",
+          "name": "WhatsApp account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatCohere",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        -2576
+      ],
+      "id": "f7a7fab9-832d-4a12-addd-90dcd7920572",
+      "name": "Cohere Chat Model",
+      "credentials": {
+        "cohereApi": {
+          "id": "4ics6prtTap1MovI",
+          "name": "Cohere account"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "WhatsApp Trigger": [
+      {
+        "json": {
+          "messaging_product": "whatsapp",
+          "metadata": {
+            "display_phone_number": "15551546029",
+            "phone_number_id": "1024062330797947"
+          },
+          "contacts": [
+            {
+              "profile": {
+                "name": "Raphael Vincent"
+              },
+              "wa_id": "2348134842041",
+              "user_id": "NG.1621235519172488"
+            }
+          ],
+          "messages": [
+            {
+              "from": "2348134842041",
+              "from_user_id": "NG.1621235519172488",
+              "id": "wamid.HBgNMjM0ODEzNDg0MjA0MRUCABIYFDJBMkYzMkE5OEFENzg5OTRDMjI2AA==",
+              "timestamp": "1777101952",
+              "type": "audio",
+              "audio": {
+                "mime_type": "audio/ogg; codecs=opus",
+                "sha256": "GC2dgggWuTsKEv7u0fdghpPBrhNt1mJEyNCvjBYjWeM=",
+                "id": "798671923033248",
+                "url": "https://lookaside.fbsbx.com/whatsapp_business/attachments/?mid=798671923033248&source=webhook&ext=1777102253&hash=ARl6PyyNuRQjub4Rg-zv7CpFLmI0x39nseFWpSPGw5H7fw",
+                "voice": true
+              }
+            }
+          ],
+          "field": "messages"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Download media": [
+      {
+        "json": {
+          "id": "798671923033248",
+          "messaging_product": "whatsapp",
+          "url": "https://lookaside.fbsbx.com/whatsapp_business/attachments/?mid=798671923033248&source=getMedia&ext=1777102256&hash=ARnzDuxyxN7ub4NK0A-akPk-siYEW-eE-0QshePD1to6_g",
+          "mime_type": "audio/ogg",
+          "sha256": "182d9d820816b93b0a12feeed1f7608693c1ae136dd66244c8d0af8c162359e3",
+          "file_size": 10440
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "HTTP Request": [
+      {
+        "json": {
+          "id": "798671923033248",
+          "messaging_product": "whatsapp",
+          "url": "https://lookaside.fbsbx.com/whatsapp_business/attachments/?mid=798671923033248&source=getMedia&ext=1777102256&hash=ARnzDuxyxN7ub4NK0A-akPk-siYEW-eE-0QshePD1to6_g",
+          "mime_type": "audio/ogg",
+          "sha256": "182d9d820816b93b0a12feeed1f7608693c1ae136dd66244c8d0af8c162359e3",
+          "file_size": 10440
+        },
+        "binary": {
+          "data": {
+            "mimeType": "audio/ogg",
+            "fileType": "audio",
+            "fileExtension": "ogg",
+            "data": "filesystem-v2",
+            "directory": "https://lookaside.fbsbx.com/whatsapp_business/attachments/?mid=798671923033248&source=getMedia&ext=1777102256&hash=ARnzDuxyxN7ub4NK0A-akPk-siYEW-eE-0QshePD1to6_g",
+            "fileName": "File.ogg",
+            "id": "filesystem-v2:workflows/0gc70GhUAT3xIyuW/executions/6638/binary_data/7357721a-4c91-4fd4-ac56-2fa7c05afc9f",
+            "fileSize": "10.4 kB",
+            "bytes": 10440
+          }
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "ElevenLabs Speech to Text": [
+      {
+        "json": {
+          "language_code": "hun",
+          "language_probability": 0.1393514722585678,
+          "text": "Hi, how far? Wetin dey sup na?",
+          "words": [
+            {
+              "text": "Hi,",
+              "start": 1.319,
+              "end": 1.599,
+              "type": "word",
+              "speaker_id": "speaker_0",
+              "logprob": -0.034906708945830665
+            },
+            {
+              "text": " ",
+              "start": 1.599,
+              "end": 2.099,
+              "type": "spacing",
+              "speaker_id": "speaker_0",
+              "logprob": -0.0031427775975316763
+            },
+            {
+              "text": "how",
+              "start": 2.099,
+              "end": 2.359,
+              "type": "word",
+              "speaker_id": "speaker_0",
+              "logprob": -0.0031427775975316763
+            },
+            {
+              "text": " ",
+              "start": 2.359,
+              "end": 2.359,
+              "type": "spacing",
+              "speaker_id": "speaker_0",
+              "logprob": -0.010291485115885735
+            },
+            {
+              "text": "far?",
+              "start": 2.359,
+              "end": 2.519,
+              "type": "word",
+              "speaker_id": "speaker_0",
+              "logprob": -0.06377462530508637
+            },
+            {
+              "text": " ",
+              "start": 2.519,
+              "end": 2.939,
+              "type": "spacing",
+              "speaker_id": "speaker_0",
+              "logprob": -0.039751820266246796
+            },
+            {
+              "text": "Wetin",
+              "start": 2.939,
+              "end": 3.279,
+              "type": "word",
+              "speaker_id": "speaker_0",
+              "logprob": -0.02387383664608933
+            },
+            {
+              "text": " ",
+              "start": 3.279,
+              "end": 3.299,
+              "type": "spacing",
+              "speaker_id": "speaker_0",
+              "logprob": -0.023281201720237732
+            },
+            {
+              "text": "dey",
+              "start": 3.299,
+              "end": 3.48,
+              "type": "word",
+              "speaker_id": "speaker_0",
+              "logprob": -0.023281201720237732
+            },
+            {
+              "text": " ",
+              "start": 3.48,
+              "end": 3.519,
+              "type": "spacing",
+              "speaker_id": "speaker_0",
+              "logprob": -0.6693806052207947
+            },
+            {
+              "text": "sup",
+              "start": 3.519,
+              "end": 3.839,
+              "type": "word",
+              "speaker_id": "speaker_0",
+              "logprob": -0.6693806052207947
+            },
+            {
+              "text": " ",
+              "start": 3.839,
+              "end": 3.919,
+              "type": "spacing",
+              "speaker_id": "speaker_0",
+              "logprob": -0.39980295300483704
+            },
+            {
+              "text": "na?",
+              "start": 3.919,
+              "end": 4.239,
+              "type": "word",
+              "speaker_id": "speaker_0",
+              "logprob": -0.26656991063646274
+            }
+          ],
+          "transcription_id": "QtV6jUWqFRaVJ6QMsHGd",
+          "audio_duration_secs": 5.1535
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "AI Agent": [
+      {
+        "json": {
+          "output": "Hello! I'm doing great, thank you for asking. I'm here to help you with all your beauty needs from Beauty Diva!\n\nWhat can I assist you with today? Are you looking for any specific products, or would you like some recommendations from our luxurious range?"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "WhatsApp Trigger": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download media": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "ElevenLabs Speech to Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ElevenLabs Speech to Text": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Download media",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delivery location": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Create Payment Link Tool'": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Verify Payment'": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet in Google Sheets": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculator": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Window Buffer Memory1": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Product Database": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp Message (HTTP)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP Request2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request2": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cohere Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "57c7bf33-88b1-4fd9-b84c-cb0d7b4d663f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "42df30c8bd92b29dcd48a286b3cefd1671a64dc4f14a98791b8f27d1a2ffc095"
+  },
+  "id": "0gc70GhUAT3xIyuW",
+  "tags": []
+}
